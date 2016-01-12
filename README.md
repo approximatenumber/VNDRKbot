@@ -1,5 +1,7 @@
-# VNDRKbot
-Telegram bot is used to notificate subscribers about updates from vandrouki.ru
+# VNDRKbot Telegram Bot On Python
 
-## Used stuff:
-https://github.com/python-telegram-bot/python-telegram-bot (with it`s echo-bot example)
+Бот для оповещения своих подписчиков о новых событиях на сайте vandrouki.ru.
+
+## Как оно устроено?
+Бот написан на python3, с использованием пакета [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot), 
+на основе примера [echobot.py](https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/legacy/echobot.py)
