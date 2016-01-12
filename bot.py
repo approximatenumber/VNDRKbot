@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#
+# Сodes of functions addSubscriber() and delSubscriber():
+# 0 - well done
+# 1 - something goes wrong
+# 3 - no such user
+# 4 - user is already in database
 
 import logging
 import telegram
@@ -9,41 +13,37 @@ from time import sleep
 import re, os
 
 import threading
-#from multiprocessing import Process
 from bs4 import BeautifulSoup
 #from urllib.request import urlopen
 from urllib import urlopen
+from urllib.error import URLError
 
-try:
-    from urllib.error import URLError
-except ImportError:
-    from urllib2 import URLError  # python 2
 
-subscribers_list = 'subscribers'
+user_db = 'subscribers'
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
 
 def main():
-  bot = telegram.Bot('154434670:AAFwtLfx_1fpfKPwYilDT1yO_yCjqC6SsEU')
+  token = ""
+  bot = telegram.Bot(token)
 
-  # get the first pending update_id, this is so we can skip over it in case
-  # we get an "Unauthorized" exception.
   try:
       update_id = bot.getUpdates()[0].update_id
   except IndexError:
       update_id = None
 
   logging.basicConfig(
+      filename='bot.log'
       format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
   
   def notificateUser():
     while True:
         if getLastNews(1) == 0:
-            with open(subscribers_list,'r') as file:
+            with open(user_db,'r') as file:
                 for subscriber in file.read().splitlines():
                     bot.sendMessage(chat_id=subscriber,
                           text=open('last_news', 'r').read())
-                    print('subscriber %s is notified' % subscriber)
+                    logging.info('subscriber %s is notified' % subscriber)
         sleep(TIMEOUT)
   
   t = threading.Thread(target=notificateUser)
@@ -68,45 +68,47 @@ def main():
 
 def addSubscriber(chat_id):
   try:
-    if os.path.exists(subscribers_list):
-      with open(subscribers_list,'r') as file:
+    if os.path.exists(user_db):
+      with open(user_db,'r') as file:
         if str(chat_id) in file.read().splitlines():
-          print('subscriber %s already in database' % chat_id)
-          return 'already in database'
+          logging.info('subscriber %s already in database' % chat_id)
+          return 4
           pass
         else:
-          with open(subscribers_list,'a') as file:
+          with open(user_db,'a') as file:
             file.write(str(chat_id) + '\n')
-          print('done for %s' % chat_id)
-          return 'done'
-    else:
-      with open(subscribers_list,'w') as file:
+          logging.info('added %s' % chat_id)
+          return 0
+    else:                                       # db does not exist
+      with open(user_db,'w') as file:
         file.write(str(chat_id) + '\n')
-      print('done for %s' % chat_id)
-      return 'done'
+      logging.info('DB created! added %s' % chat_id)
+      return 0
   except Exception:
+    logging.error('some problems with %s' % chat_id)
     return 1
   
 def delSubscriber(chat_id):
   try:
-    if os.path.exists(subscribers_list):
-      subscribers = open(subscribers_list).read()
+    if os.path.exists(user_db):
+      subscribers = open(user_db).read()
       if str(chat_id) in subscribers:
-        new_subscribers_list = open(subscribers_list,"w")
-        new_subscribers_list.write(re.sub(str(chat_id) + '\n','',subscribers))
-        new_subscribers_list.close()
-        print('deletting done for %s' % chat_id)
-        return('done')
+        new_user_db = open(user_db,"w")
+        new_user_db.write(re.sub(str(chat_id) + '\n','',subscribers))
+        new_user_db.close()
+        logging.info('%s is deleted' % chat_id)
+        return 0
       else:
-        return('no such user')
-        print('no such user: %s' % chat_id)
+        return 3
+        logging.info('no such user: %s' % chat_id)
         pass
-    else:
-      new_subscribers_list = open(subscribers_list,"w")
-      new_subscribers_list.close()
-      return('no such user')
-      print('no such user: %s', chat_id)
+    else:                                       # db does not exist
+      new_user_db = open(user_db,"w")
+      new_user_db.close()
+      return 3
+      logging.info('no such user: %s' % chat_id)
   except Exception:
+    logging.error('some problems with %s' % chat_id)
     return 1
   
 def echo(bot, update_id):                                                       # Request updates after the last update_id
@@ -116,10 +118,10 @@ def echo(bot, update_id):                                                       
         message = update.message.text
 
         if message == "/start":                                                 # Reply to the start message
-            if addSubscriber(chat_id) == "done":
+            if addSubscriber(chat_id) == 0:
               bot.sendMessage(chat_id=chat_id,
                             text="Привет! Вы подписаны на обновления vandrouki.")
-            elif addSubscriber(chat_id) == "already in database":
+            elif addSubscriber(chat_id) == 4:
               bot.sendMessage(chat_id=chat_id,
                             text="Вы ведь уже подписаны на обновления vandrouki!")
             else:
@@ -127,10 +129,10 @@ def echo(bot, update_id):                                                       
                             text="У нас что-то пошло не так...")
               
         elif message == "/stop":                                                # Reply to the message
-            if delSubscriber(chat_id) == 'done':
+            if delSubscriber(chat_id) == 0:
               bot.sendMessage(chat_id=chat_id,
                               text="Вы отписались от обновления vandrouki. Пока!")
-            elif delSubscriber(chat_id) == 'no such user':
+            elif delSubscriber(chat_id) == 3:
               bot.sendMessage(chat_id=chat_id,
                               text="Привет! А Вы не подписаны на обновления vandrouki.")
             else:
@@ -143,24 +145,27 @@ def echo(bot, update_id):                                                       
     return update_id
 
 def getLastNews(amount):                                                                        # it works now with only one news
-  num = 1
-  page = urlopen(URL)
-  soup = BeautifulSoup(page, "html.parser")
-  with open('last_news', 'r') as file:
-    for a in soup.findAll('a', { 'rel': 'bookmark' }):
-      if num <= amount:
-        news = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
-        if news.encode('utf-8') == file.readline():                                                             # no news
-          pass
-          return 1
-        else:
-          with open('last_news', 'w') as file:
-            file.write(news.encode('utf-8'))
-          return 0
-          print('updated')
-        num += 1
-      else:
-        break
+  try:
+      num = 1
+      page = urlopen(URL)
+      soup = BeautifulSoup(page, "html.parser")
+      with open('last_news', 'r') as file:
+        for a in soup.findAll('a', { 'rel': 'bookmark' }):
+          if num <= amount:
+            news = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
+            if news.encode('utf-8') == file.readline():                           # file and variable are the same, no news
+              pass
+              return 1
+            else:
+              with open('last_news', 'w') as file:
+                file.write(news.encode('utf-8'))
+              return 0
+              print('updated')
+            num += 1
+          else:
+            break
+  except Exception:
+      logging.error('some problems with getLastNews()')
   
 
 if __name__ == '__main__':
