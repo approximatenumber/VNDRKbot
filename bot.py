@@ -25,7 +25,7 @@ user_db = "subscribers"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
-token = "154434670:AAFwtLfx_1fpfKPwYilDT1yO_yCjqC6SsEU"
+token = ""
 
 def main():
 
