@@ -14,42 +14,52 @@ import re, os
 
 import threading
 from bs4 import BeautifulSoup
-#from urllib.request import urlopen
-from urllib import urlopen
+try:
+    from urllib import urlopen
+except ImportError:
+    from urllib.request import urlopen # python 3.4.3
 from urllib.error import URLError
 
 
-user_db = 'subscribers'
+user_db = "subscribers"
+news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
+token = "154434670:AAFwtLfx_1fpfKPwYilDT1yO_yCjqC6SsEU"
 
 def main():
-  token = ""
-  bot = telegram.Bot(token)
 
-  try:
-      update_id = bot.getUpdates()[0].update_id
-  except IndexError:
-      update_id = None
-
-  logging.basicConfig(
-      filename='bot.log'
-      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-  
   def notificateUser():
     while True:
         if getLastNews(1) == 0:
             with open(user_db,'r') as file:
                 for subscriber in file.read().splitlines():
                     bot.sendMessage(chat_id=subscriber,
-                          text=open('last_news', 'r').read())
+                          text=open(news, 'r').read())
                     logging.info('subscriber %s is notified' % subscriber)
         sleep(TIMEOUT)
-  
+
+  logging.basicConfig(
+      filename='bot.log',
+      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+  logging.info('Starting bot...')
+
+  for file in news, user_db:
+      if not os.path.exists(file):
+          open(file, 'w').close()
+          logging.info('news and user_db created')
+
+  bot = telegram.Bot(token)
+  try:
+      update_id = bot.getUpdates()[0].update_id
+  except IndexError:
+      update_id = None
+
   t = threading.Thread(target=notificateUser)
   t.daemon = True
   t.start()
-  
+
   while True:
       try:
           update_id = echo(bot, update_id)
@@ -127,7 +137,6 @@ def echo(bot, update_id):                                                       
             else:
               bot.sendMessage(chat_id=chat_id,
                             text="У нас что-то пошло не так...")
-              
         elif message == "/stop":                                                # Reply to the message
             if delSubscriber(chat_id) == 0:
               bot.sendMessage(chat_id=chat_id,
@@ -149,15 +158,15 @@ def getLastNews(amount):                                                        
       num = 1
       page = urlopen(URL)
       soup = BeautifulSoup(page, "html.parser")
-      with open('last_news', 'r') as file:
+      with open(news, 'r') as file:
         for a in soup.findAll('a', { 'rel': 'bookmark' }):
           if num <= amount:
             news = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
             if news.encode('utf-8') == file.readline():                           # file and variable are the same, no news
               pass
-              return 1
+              return 0
             else:
-              with open('last_news', 'w') as file:
+              with open(news, 'w') as file:
                 file.write(news.encode('utf-8'))
               return 0
               print('updated')
@@ -166,6 +175,7 @@ def getLastNews(amount):                                                        
             break
   except Exception:
       logging.error('some problems with getLastNews()')
+      return 1
   
 
 if __name__ == '__main__':
