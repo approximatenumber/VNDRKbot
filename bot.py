@@ -20,7 +20,6 @@ except ImportError:
     from urllib.request import urlopen # python 3.4.3
 from urllib.error import URLError
 
-
 user_db = "subscribers"
 news = "last_news"
 TIMEOUT = 30
@@ -30,15 +29,13 @@ token = ""
 def main():
 
   def notificateUser():
-    while True:
-        if getLastNews(1) == 0:
-            with open(user_db,'r') as file:
-                for subscriber in file.read().splitlines():
-                    bot.sendMessage(chat_id=subscriber,
-                          text=open(news, 'r').read())
-                    logging.info('subscriber %s is notified' % subscriber)
-        sleep(TIMEOUT)
-
+    if getLastNews(1) == 0:
+        with open(user_db,'r') as file:
+            for subscriber in file.read().splitlines():
+                bot.sendMessage(chat_id=subscriber,
+                        text=open(news, 'r').read())
+                logging.info('subscriber %s is notified' % subscriber)
+                
   logging.basicConfig(
       filename='bot.log',
       format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -56,11 +53,12 @@ def main():
   except IndexError:
       update_id = None
 
-  t = threading.Thread(target=notificateUser)
-  t.daemon = True
-  t.start()
-
+  latest_handling_ts = time.time()                                              # start our TIMEOUT
   while True:
+      now = time.time()
+      if now - latest_handling_ts > TIMEOUT:                                    # check if TIMEOUT is over,
+          notificateUser()                                                      # then notificate users from our database
+          latest_handling_ts = time.time()                                      # update start of TIMEOUT
       try:
           update_id = echo(bot, update_id)
       except telegram.TelegramError as e:
@@ -162,7 +160,7 @@ def getLastNews(amount):                                                        
         for a in soup.findAll('a', { 'rel': 'bookmark' }):
           if num <= amount:
             news = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
-            if news.encode('utf-8') == file.readline():                           # file and variable are the same, no news
+            if news.encode('utf-8') == file.readline():                           # file and variable are the same, so no news
               pass
               return 0
             else:
