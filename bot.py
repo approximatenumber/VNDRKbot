@@ -7,12 +7,8 @@
 # 3 - no such user
 # 4 - user is already in database
 
-import logging
-import telegram
+import telegram, logging, re, os, threading
 from time import sleep
-import re, os
-
-import threading
 from bs4 import BeautifulSoup
 try:
     from urllib import urlopen
