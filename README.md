@@ -12,6 +12,8 @@
 3. 
 
 ## Требования?
-python3
+`python3`
 <br>
-pip install python-telegram-bot beautifulsoup4
+`python-telegram-bot`
+<br>
+`beautifulsoup4`
