@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Simple Bot to reply to Telegram messages
+# This program is dedicated to the public domain under the CC0 license.
 
 # Сodes of functions addSubscriber() and delSubscriber():
 # 0 - well done
@@ -7,54 +10,94 @@
 # 3 - no such user
 # 4 - user is already in database
 
-import telegram, logging, re, os, threading
+import logging
+import telegram
 from time import sleep
+import re, os
+import threading
 from bs4 import BeautifulSoup
 try:
     from urllib import urlopen
 except ImportError:
     from urllib.request import urlopen # python 3.4.3
-from urllib.error import URLError
+
+try:
+    from urllib.error import URLError
+except ImportError:
+    from urllib2 import URLError  # python 2
+
 
 user_db = "subscribers"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
-token = ""
-
+TOKEN = "154434670:AAFwtLfx_1fpfKPwYilDT1yO_yCjqC6SsEU"
+log_file = "bot.log"
 def main():
 
-  def notificateUser():
-    if getLastNews(1) == 0:
-        with open(user_db,'r') as file:
-            for subscriber in file.read().splitlines():
-                bot.sendMessage(chat_id=subscriber,
-                        text=open(news, 'r').read())
-                logging.info('subscriber %s is notified' % subscriber)
-                
   logging.basicConfig(
-      filename='bot.log',
-      format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-  logging.info('Starting bot...')
-
+      level = logging.WARNING,
+      filename=log_file,
+      format='%(asctime)s:%(name)s:%(levelname)s - %(message)s')
+  
   for file in news, user_db:
       if not os.path.exists(file):
           open(file, 'w').close()
-          logging.info('news and user_db created')
-
-  bot = telegram.Bot(token)
+          logging.warning('file %s created' % file)
+  open(log_file, 'w').close()
+          
+  bot = telegram.Bot(TOKEN)
+  logging.warning('bot started...')
+  # get the first pending update_id, this is so we can skip over it in case
+  # we get an "Unauthorized" exception.
   try:
       update_id = bot.getUpdates()[0].update_id
   except IndexError:
       update_id = None
 
-  latest_handling_ts = time.time()                                              # start our TIMEOUT
+  def notificateUser():
+    while True:
+      if getLastNews(1) == 0:
+          with open(user_db,'r') as file:
+              for subscriber in file.read().splitlines():
+                if subscriber.strip() == '':                                              #don`t touch empty lines
+                  pass
+                else:
+                  bot.sendMessage(chat_id=subscriber,
+                          text=open(news, 'r').read())
+                  logging.warning('subscriber %s is notified' % subscriber)
+      sleep(TIMEOUT)
+
+  def getLastNews(amount):                                                                  # it works now with only one news
+    global news
+    try:
+        num = 1
+        page = urlopen(URL)
+        soup = BeautifulSoup(page, "html.parser")
+        with open(news, 'r') as file:
+          for a in soup.findAll('a', { 'rel': 'bookmark' }):
+            if num <= amount:
+              new_message = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
+              if new_message.encode('utf-8') == file.readline():                           # file and variable are the same, so no news
+                pass
+                return 1
+              else:
+                with open(news, 'w') as file:
+                  file.write(new_message.encode('utf-8'))
+                return 0
+                logging.warning('new message! news updated')
+              num += 1
+            else:
+              break
+    except Exception:
+        logging.error('some problems with getLastNews()')
+        return 1
+  
+  t = threading.Thread(target=notificateUser)
+  t.daemon = True
+  t.start()
+  
   while True:
-      now = time.time()
-      if now - latest_handling_ts > TIMEOUT:                                    # check if TIMEOUT is over,
-          notificateUser()                                                      # then notificate users from our database
-          latest_handling_ts = time.time()                                      # update start of TIMEOUT
       try:
           update_id = echo(bot, update_id)
       except telegram.TelegramError as e:
@@ -75,18 +118,18 @@ def addSubscriber(chat_id):
     if os.path.exists(user_db):
       with open(user_db,'r') as file:
         if str(chat_id) in file.read().splitlines():
-          logging.info('subscriber %s already in database' % chat_id)
+          logging.warning('subscriber %s already in database' % chat_id)
           return 4
           pass
         else:
           with open(user_db,'a') as file:
             file.write(str(chat_id) + '\n')
-          logging.info('added %s' % chat_id)
+          logging.warning('added %s' % chat_id)
           return 0
     else:                                       # db does not exist
       with open(user_db,'w') as file:
         file.write(str(chat_id) + '\n')
-      logging.info('DB created! added %s' % chat_id)
+      logging.warning('DB created! added %s' % chat_id)
       return 0
   except Exception:
     logging.error('some problems with %s' % chat_id)
@@ -100,17 +143,17 @@ def delSubscriber(chat_id):
         new_user_db = open(user_db,"w")
         new_user_db.write(re.sub(str(chat_id) + '\n','',subscribers))
         new_user_db.close()
-        logging.info('%s is deleted' % chat_id)
+        logging.warning('%s is deleted' % chat_id)
         return 0
       else:
         return 3
-        logging.info('no such user: %s' % chat_id)
+        logging.warning('no such user: %s' % chat_id)
         pass
     else:                                       # db does not exist
       new_user_db = open(user_db,"w")
       new_user_db.close()
       return 3
-      logging.info('no such user: %s' % chat_id)
+      logging.warning('no such user: %s' % chat_id)
   except Exception:
     logging.error('some problems with %s' % chat_id)
     return 1
@@ -144,32 +187,9 @@ def echo(bot, update_id):                                                       
         elif message:
           bot.sendMessage(chat_id=chat_id,
                               text="Что-что? Я понимаю только /start и /stop")
-
     return update_id
 
-def getLastNews(amount):                                                                        # it works now with only one news
-  try:
-      num = 1
-      page = urlopen(URL)
-      soup = BeautifulSoup(page, "html.parser")
-      with open(news, 'r') as file:
-        for a in soup.findAll('a', { 'rel': 'bookmark' }):
-          if num <= amount:
-            news = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
-            if news.encode('utf-8') == file.readline():                           # file and variable are the same, so no news
-              pass
-              return 0
-            else:
-              with open(news, 'w') as file:
-                file.write(news.encode('utf-8'))
-              return 0
-              print('updated')
-            num += 1
-          else:
-            break
-  except Exception:
-      logging.error('some problems with getLastNews()')
-      return 1
+
   
 
 if __name__ == '__main__':
