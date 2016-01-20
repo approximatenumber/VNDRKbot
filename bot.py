@@ -36,7 +36,7 @@ def main():
   logging.basicConfig(
       level = logging.WARNING,
       filename=log_file,
-      format='%(asctime)s:%(name)s:%(levelname)s - %(message)s')
+      format='%(asctime)s:%(levelname)s - %(message)s')
   
   for file in news, user_db:
       if not os.path.exists(file):
