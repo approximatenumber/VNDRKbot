@@ -10,8 +10,6 @@
 3. 
 
 ## Требования?
-`python3`
-<br>
 `python-telegram-bot`
 <br>
 `beautifulsoup4`
