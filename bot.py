@@ -78,8 +78,6 @@ def main():
                       file.write(new_message)
                 logging.warning('new message! news updated')
                 return 0
-            else:
-              break
     except Exception:
         logging.error('some problems with getLastNews()')
         return 1
