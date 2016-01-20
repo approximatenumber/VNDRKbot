@@ -19,13 +19,17 @@ try:
     from urllib.error import URLError
 except ImportError:
     from urllib2 import URLError                                # python 2
-
+try:
+    sys.path.append('.private'); from config import TOKEN       # importing secret TOKEN
+except ImportError:
+    print("need TOKEN from .private/config.py")
+    sys.exit(1)
 user_db = "user_db"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
 log_file = "bot.log"
-sys.path.append('.private'); from config import TOKEN
+
 
 def main():
   logging.basicConfig(
