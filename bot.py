@@ -7,7 +7,8 @@
 # 3 - no such user
 # 4 - user is already in database
 
-import telegram, configparser, logging, os, sys, threading
+import telegram, configparser, logging, os, sys
+from threading import Thread
 from time import sleep
 from bs4 import BeautifulSoup
 try:
@@ -19,7 +20,7 @@ try:
 except ImportError:
     from urllib2 import URLError                                # python 2
 
-user_db = "users"
+user_db = "user_db"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
@@ -29,10 +30,10 @@ sys.path.append('.private'); from config import TOKEN
 def main():
   def notificateUser():
     while True:
-      if getLastNews(1) == 0:
+      if getLastNews() == 0:
           with open(user_db,'r') as file:
               for user in file.read().splitlines():
-                if user.strip() == '':                                              #don`t touch empty lines
+                if user.strip() == '':                                                       # don`t touch empty lines
                   pass
                 else:
                   bot.sendMessage(chat_id=user,
@@ -43,11 +44,10 @@ def main():
   def getLastNews(): 
     global news
     try:
-        page = urlopen(URL)
-        soup = BeautifulSoup(page, "html.parser")
+        soup = BeautifulSoup(urlopen(URL), "html.parser")
         with open(news, 'r') as file:
           for a in soup.findAll('a', { 'rel': 'bookmark' }):
-              new_message = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
+              new_message = "%s (%s)" % (a.get_text(), str(a.get('href')))
 #              if new_message.encode('utf-8') == file.readline():                           # RASPBIAN PROBLEM
               if new_message == file.readline():                                            # file and variable are the same, so no news
                 pass
@@ -58,9 +58,8 @@ def main():
                       file.write(new_message.encode('utf-8')) # python 3.4.3 raspbian
                   except TypeError:
                       file.write(new_message)
-                return 0
                 logging.warning('new message! news updated')
-              num += 1
+                return 0
     except Exception:
         logging.error('some problems with getLastNews()')
         return 1
@@ -83,9 +82,9 @@ def main():
   except IndexError:
       update_id = None
   
-  thread = threading.Thread(target=notificateUser)
-  thread.daemon = True
-  thread.start()
+  t = Thread(target=notificateUser)
+  t.daemon = True
+  t.start()
   
   while True:
       try:
