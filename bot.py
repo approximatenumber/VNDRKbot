@@ -65,7 +65,8 @@ def main():
         soup = BeautifulSoup(urlopen(URL), "html.parser")
         with open(news, 'r') as file:
           for a in soup.findAll('a', { 'rel': 'bookmark' }):
-              new_message = "%s (%s)" % (a.get_text(), str(a.get('href')))
+#              new_message = "%s (%s)" % (a.get_text(), str(a.get('href')))
+              new_message = str(a.get('href'))
 #              if new_message.encode('utf-8') == file.readline():                           # RASPBIAN PROBLEM
               if new_message == file.readline():                                            # file and variable are the same, so no news
                 pass
