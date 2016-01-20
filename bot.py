@@ -28,6 +28,24 @@ log_file = "bot.log"
 sys.path.append('.private'); from config import TOKEN
 
 def main():
+  logging.basicConfig(
+      level = logging.WARNING,
+      filename=log_file,
+      format='%(asctime)s:%(levelname)s - %(message)s')
+  
+  for file in news, user_db:
+      if not os.path.exists(file):
+          open(file, 'w').close()
+          logging.warning('file %s created' % file)
+  open(log_file, 'w').close()
+          
+  bot = telegram.Bot(TOKEN)
+  logging.warning('bot started...')
+  try:
+      update_id = bot.getUpdates()[0].update_id
+  except IndexError:
+      update_id = None
+
   def notificateUser():
     while True:
       if getLastNews() == 0:
@@ -60,6 +78,8 @@ def main():
                       file.write(new_message)
                 logging.warning('new message! news updated')
                 return 0
+            else:
+              break
     except Exception:
         logging.error('some problems with getLastNews()')
         return 1
