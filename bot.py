@@ -7,7 +7,7 @@
 # 3 - no such user
 # 4 - user is already in database
 
-import telegram, configparser, logging, os, sys
+import telegram, configparser, logging, os, sys, re
 from threading import Thread
 from time import sleep
 from bs4 import BeautifulSoup
@@ -83,18 +83,6 @@ def main():
         logging.error('some problems with getLastNews()')
         return 1
 
-  logging.basicConfig(
-      level = logging.WARNING,
-      filename=log_file,
-      format='%(asctime)s:%(name)s:%(levelname)s - %(message)s')
-# Init files, log
-  for file in news, user_db:
-      if not os.path.exists(file):
-          open(file, 'w').close()
-          logging.warning('file %s created' % file)
-  open(log_file, 'w').close()
-  logging.warning('bot starting...')
-
   bot = telegram.Bot(TOKEN)
   try:
       update_id = bot.getUpdates()[0].update_id
@@ -140,30 +128,30 @@ def addSubscriber(chat_id):
       logging.warning('DB created! added %s' % chat_id)
       return 0
   except Exception:
-    logging.error('some problems with %s' % chat_id)
+    logging.error('addSubscriber(): some problems with %s while' % chat_id)
     return 1
   
 def delSubscriber(chat_id):
   try:
     if os.path.exists(user_db):
       users = open(user_db).read()
-      if str(chat_id) in users:                                                 # if chat_id in user_db, so delete it
+      if str(chat_id) in users:                                                 # if chat_id in user_db,..
         new_user_db = open(user_db,"w")
-        new_user_db.write(re.sub(str(chat_id) + '\n','', users))
+        new_user_db.write(re.sub(str(chat_id) + '\n','', users))                # ..so delete it
         new_user_db.close()
         logging.warning('%s is deleted' % chat_id)
         return 0
       else:
-        return 3
         logging.warning('no such user: %s' % chat_id)
         pass
+        return 3
     else:                                                                       # db does not exist
       new_user_db = open(user_db,"w")
       new_user_db.close()
-      return 3
       logging.warning('no such user: %s' % chat_id)
+      return 3
   except Exception:
-    logging.error('some problems with %s' % chat_id)
+    logging.error('delSubscriber(): some problems with %s' % chat_id)
     return 1
   
 def echo(bot, update_id):                                                       # Request updates after the last update_id
@@ -175,7 +163,7 @@ def echo(bot, update_id):                                                       
         if message == "/start":                                                 # Reply to the start message
             if addSubscriber(chat_id) == 0:
               bot.sendMessage(chat_id=chat_id,
-                            text="Привет! Вы подписаны на обновления vandrouki.")
+                            text="Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, а вот из последнего: %s" % open(news, 'r').readline())
             elif addSubscriber(chat_id) == 4:
               bot.sendMessage(chat_id=chat_id,
                             text="Вы ведь уже подписаны на обновления vandrouki!")
