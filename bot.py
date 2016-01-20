@@ -6,32 +6,33 @@
 # 1 - something goes wrong
 # 3 - no such user
 # 4 - user is already in database
-
+import configparser
 import logging
 import telegram
 from time import sleep
 import re, os
+import sys
 import threading
 from bs4 import BeautifulSoup
 try:
     from urllib import urlopen
 except ImportError:
-    from urllib.request import urlopen # python 3.4.3
+    from urllib.request import urlopen                          # python 3.4.3 (raspbian)
 
 try:
     from urllib.error import URLError
 except ImportError:
-    from urllib2 import URLError  # python 2
+    from urllib2 import URLError                                # python 2
 
 
-user_db = "subscribers"
+user_db = "users"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
-TOKEN = "154434670:AAFwtLfx_1fpfKPwYilDT1yO_yCjqC6SsEU"
 log_file = "bot.log"
-def main():
+sys.path.append('.private'); from config import TOKEN
 
+def main():
   logging.basicConfig(
       level = logging.WARNING,
       filename=log_file,
@@ -56,13 +57,13 @@ def main():
     while True:
       if getLastNews(1) == 0:
           with open(user_db,'r') as file:
-              for subscriber in file.read().splitlines():
-                if subscriber.strip() == '':                                              #don`t touch empty lines
+              for user in file.read().splitlines():
+                if user.strip() == '':                                              #don`t touch empty lines
                   pass
                 else:
-                  bot.sendMessage(chat_id=subscriber,
+                  bot.sendMessage(chat_id=user,
                           text=open(news, 'r').read())
-                  logging.warning('subscriber %s is notified' % subscriber)
+                  logging.warning('user %s is notified' % user)
       sleep(TIMEOUT)
 
   def getLastNews(amount):                                                                  # it works now with only one news
@@ -75,18 +76,23 @@ def main():
           for a in soup.findAll('a', { 'rel': 'bookmark' }):
             if num <= amount:
               new_message = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
-              if new_message.encode('utf-8') == file.readline():                           # file and variable are the same, so no news
+#              if new_message.encode('utf-8') == file.readline():                           # file and variable are the same, so no news
+              if new_message == file.readline():                           # file and variable are the same, so no news
                 pass
                 return 1
               else:
                 with open(news, 'w') as file:
-                  file.write(new_message.encode('utf-8'))
+                  try:
+                      file.write(new_message.encode('utf-8')) # python 3.4.3 raspbian
+                  except TypeError:
+                      file.write(new_message)
                 return 0
                 logging.warning('new message! news updated')
               num += 1
             else:
               break
-    except Exception:
+#    except Exception:
+    except OSError:
         logging.error('some problems with getLastNews()')
         return 1
   
@@ -115,7 +121,7 @@ def addSubscriber(chat_id):
     if os.path.exists(user_db):
       with open(user_db,'r') as file:
         if str(chat_id) in file.read().splitlines():
-          logging.warning('subscriber %s already in database' % chat_id)
+          logging.warning('user %s already in database' % chat_id)
           return 4
           pass
         else:
@@ -123,7 +129,7 @@ def addSubscriber(chat_id):
             file.write(str(chat_id) + '\n')
           logging.warning('added %s' % chat_id)
           return 0
-    else:                                       # db does not exist
+    else:                                                                       # db does not exist
       with open(user_db,'w') as file:
         file.write(str(chat_id) + '\n')
       logging.warning('DB created! added %s' % chat_id)
@@ -135,10 +141,10 @@ def addSubscriber(chat_id):
 def delSubscriber(chat_id):
   try:
     if os.path.exists(user_db):
-      subscribers = open(user_db).read()
-      if str(chat_id) in subscribers:
+      users = open(user_db).read()
+      if str(chat_id) in users:                                                 # if chat_id in user_db, so delete it
         new_user_db = open(user_db,"w")
-        new_user_db.write(re.sub(str(chat_id) + '\n','',subscribers))
+        new_user_db.write(re.sub(str(chat_id) + '\n','', users))
         new_user_db.close()
         logging.warning('%s is deleted' % chat_id)
         return 0
@@ -146,7 +152,7 @@ def delSubscriber(chat_id):
         return 3
         logging.warning('no such user: %s' % chat_id)
         pass
-    else:                                       # db does not exist
+    else:                                                                       # db does not exist
       new_user_db = open(user_db,"w")
       new_user_db.close()
       return 3
