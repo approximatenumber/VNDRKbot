@@ -91,8 +91,7 @@ def main():
               num += 1
             else:
               break
-#    except Exception:
-    except OSError:
+    except Exception:
         logging.error('some problems with getLastNews()')
         return 1
   
