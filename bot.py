@@ -1,29 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Сodes of functions addSubscriber() and delSubscriber():
+# Exit codes of functions addSubscriber() and delSubscriber():
 # 0 - well done
 # 1 - something goes wrong
 # 3 - no such user
 # 4 - user is already in database
-import configparser
-import logging
-import telegram
+
+import telegram, configparser, logging, os, sys, threading
 from time import sleep
-import re, os
-import sys
-import threading
 from bs4 import BeautifulSoup
 try:
     from urllib import urlopen
 except ImportError:
     from urllib.request import urlopen                          # python 3.4.3 (raspbian)
-
 try:
     from urllib.error import URLError
 except ImportError:
     from urllib2 import URLError                                # python 2
-
 
 user_db = "users"
 news = "last_news"
@@ -33,26 +27,6 @@ log_file = "bot.log"
 sys.path.append('.private'); from config import TOKEN
 
 def main():
-  logging.basicConfig(
-      level = logging.WARNING,
-      filename=log_file,
-      format='%(asctime)s:%(name)s:%(levelname)s - %(message)s')
-  
-  for file in news, user_db:
-      if not os.path.exists(file):
-          open(file, 'w').close()
-          logging.warning('file %s created' % file)
-  open(log_file, 'w').close()
-          
-  bot = telegram.Bot(TOKEN)
-  logging.warning('bot started...')
-  # get the first pending update_id, this is so we can skip over it in case
-  # we get an "Unauthorized" exception.
-  try:
-      update_id = bot.getUpdates()[0].update_id
-  except IndexError:
-      update_id = None
-
   def notificateUser():
     while True:
       if getLastNews(1) == 0:
@@ -66,18 +40,16 @@ def main():
                   logging.warning('user %s is notified' % user)
       sleep(TIMEOUT)
 
-  def getLastNews(amount):                                                                  # it works now with only one news
+  def getLastNews(): 
     global news
     try:
-        num = 1
         page = urlopen(URL)
         soup = BeautifulSoup(page, "html.parser")
         with open(news, 'r') as file:
           for a in soup.findAll('a', { 'rel': 'bookmark' }):
-            if num <= amount:
               new_message = a.get_text() + " (" + str(a.get('href')) + ")." + '\n'         # it looks like: "Example text (example link)."
-#              if new_message.encode('utf-8') == file.readline():                           # file and variable are the same, so no news
-              if new_message == file.readline():                           # file and variable are the same, so no news
+#              if new_message.encode('utf-8') == file.readline():                           # RASPBIAN PROBLEM
+              if new_message == file.readline():                                            # file and variable are the same, so no news
                 pass
                 return 1
               else:
@@ -89,16 +61,31 @@ def main():
                 return 0
                 logging.warning('new message! news updated')
               num += 1
-            else:
-              break
-#    except Exception:
-    except OSError:
+    except Exception:
         logging.error('some problems with getLastNews()')
         return 1
+
+  logging.basicConfig(
+      level = logging.WARNING,
+      filename=log_file,
+      format='%(asctime)s:%(name)s:%(levelname)s - %(message)s')
+# Init files, log
+  for file in news, user_db:
+      if not os.path.exists(file):
+          open(file, 'w').close()
+          logging.warning('file %s created' % file)
+  open(log_file, 'w').close()
+  logging.warning('bot starting...')
+
+  bot = telegram.Bot(TOKEN)
+  try:
+      update_id = bot.getUpdates()[0].update_id
+  except IndexError:
+      update_id = None
   
-  t = threading.Thread(target=notificateUser)
-  t.daemon = True
-  t.start()
+  thread = threading.Thread(target=notificateUser)
+  thread.daemon = True
+  thread.start()
   
   while True:
       try:
@@ -191,9 +178,6 @@ def echo(bot, update_id):                                                       
           bot.sendMessage(chat_id=chat_id,
                               text="Что-что? Я понимаю только /start и /stop")
     return update_id
-
-
-  
 
 if __name__ == '__main__':
     main()
