@@ -167,7 +167,8 @@ def echo(bot, update_id):                                                       
         if message == "/start":                                                 # Reply to the start message
             if addSubscriber(chat_id) == 0:
               bot.sendMessage(chat_id=chat_id,
-                            text="Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, а вот из последнего: %s" % open(news, 'r').readline())
+                            text="Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, 
+                                    а вот пока из последнего: %s" % open(news, 'r').readline())
             elif addSubscriber(chat_id) == 4:
               bot.sendMessage(chat_id=chat_id,
                             text="Вы ведь уже подписаны на обновления vandrouki!")
