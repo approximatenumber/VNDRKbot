@@ -35,19 +35,6 @@ def main():
       level = logging.WARNING,
       filename=log_file,
       format='%(asctime)s:%(levelname)s - %(message)s')
-  
-  for file in news, user_db:
-      if not os.path.exists(file):
-          open(file, 'w').close()
-          logging.warning('file %s created' % file)
-  open(log_file, 'w').close()
-          
-  bot = telegram.Bot(TOKEN)
-  logging.warning('bot started...')
-  try:
-      update_id = bot.getUpdates()[0].update_id
-  except IndexError:
-      update_id = None
 
   def notificateUser():
     while True:
@@ -61,24 +48,31 @@ def main():
                           text=open(news, 'r').read())
                   logging.warning('user %s is notified' % user)
       sleep(TIMEOUT)
- 
+
   def getLastNews(): 
     global news
     try:
         soup = BeautifulSoup(urlopen(URL), "html.parser")
         new_message = soup.findAll('a', { 'rel': 'bookmark' })[0]               # get last message, parsing with parameters
         with open(news, 'r') as file:
-            if new_message == file.readline():                                            # file and variable are the same, so no news
-                pass
-                return 1
-            else:
+            if new_message != file.readline():                                            
                 with open(news, 'w') as file:
                     file.write(new_message)
                     logging.warning('new message! news updated')
                     return 0
+            else:                                                               # file and variable are the same, so no news
+                return 1
+
     except Exception:
         logging.error('some problems with getLastNews()')
         return 1
+
+  for file in news, user_db:
+      if not os.path.exists(file):
+          open(file, 'w').close()
+          logging.warning('file %s created' % file)
+  open(log_file, 'w').close()
+  logging.warning('bot started...')
 
   bot = telegram.Bot(TOKEN)
   try:
