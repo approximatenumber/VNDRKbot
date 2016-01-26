@@ -30,7 +30,6 @@ TIMEOUT = 30
 URL = "http://vandrouki.ru"
 log_file = "bot.log"
 
-
 def main():
   logging.basicConfig(
       level = logging.WARNING,
@@ -55,34 +54,28 @@ def main():
       if getLastNews() == 0:
           with open(user_db,'r') as file:
               for user in file.read().splitlines():
-                if user.strip() == '':                                                       # don`t touch empty lines
+                if user.strip() == '':                   # don`t touch empty lines
                   pass
                 else:
                   bot.sendMessage(chat_id=user,
                           text=open(news, 'r').read())
                   logging.warning('user %s is notified' % user)
       sleep(TIMEOUT)
-
+ 
   def getLastNews(): 
     global news
     try:
         soup = BeautifulSoup(urlopen(URL), "html.parser")
+        new_message = soup.findAll('a', { 'rel': 'bookmark' })[0]               # get last message, parsing with parameters
         with open(news, 'r') as file:
-          for a in soup.findAll('a', { 'rel': 'bookmark' }):
-#              new_message = "%s (%s)" % (a.get_text(), str(a.get('href')))
-              new_message = str(a.get('href'))
-#              if new_message.encode('utf-8') == file.readline():                           # RASPBIAN PROBLEM
-              if new_message == file.readline():                                            # file and variable are the same, so no news
+            if new_message == file.readline():                                            # file and variable are the same, so no news
                 pass
                 return 1
-              else:
+            else:
                 with open(news, 'w') as file:
-                  try:
-                      file.write(new_message.encode('utf-8')) # python 3.4.3 raspbian
-                  except TypeError:
-                      file.write(new_message)
-                logging.warning('new message! news updated')
-                return 0
+                    file.write(new_message)
+                    logging.warning('new message! news updated')
+                    return 0
     except Exception:
         logging.error('some problems with getLastNews()')
         return 1
