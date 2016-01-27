@@ -140,8 +140,7 @@ def delSubscriber(chat_id):
         pass
         return 3
     else:                                                                       # db does not exist
-      new_user_db = open(user_db,"w")
-      new_user_db.close()
+      open(user_db, 'w').close()
       logging.warning('no such user: %s' % chat_id)
       return 3
   except Exception:
@@ -156,8 +155,7 @@ def echo(bot, update_id):                                                       
 
         if message == "/start":                                                 # Reply to the start message
             if addSubscriber(chat_id) == 0:
-              msg = "Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, 
-                                    а вот пока из последнего: %s" % open(news, 'r').readline()
+              msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!")
               sendMessage(chat_id, msg)
             elif addSubscriber(chat_id) == 4:
               msg = "Вы ведь уже подписаны на обновления vandrouki!"
