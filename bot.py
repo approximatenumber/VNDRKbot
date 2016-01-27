@@ -28,26 +28,30 @@ user_db = "user_db"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
-log_file = "bot.log"
 
 def main():
   logging.basicConfig(
       level = logging.WARNING,
-      filename=log_file,
+      filename="bot.log",
       format='%(asctime)s:%(levelname)s - %(message)s')
-
+  
+  def sendMessage(chat_id, msg):
+    bot.sendMessage(chat_id=chat_id, text=msg)
+    return chat_id
+  
   def notificateUser():
     while True:
       if getLastNews() == 0:
           with open(user_db,'r') as file:
-              for user in file.read().splitlines():
-                if user.strip() == '':                   # don`t touch empty lines
-                  pass
+              for chad_id in file.read().splitlines():
+                if chat_id.strip() != '':                   
+                  msg = open(news, 'r').read()
+                  sendMessage(chat_id, msg)
+                  logging.warning('user wit chat_id %s is notified' % chat_id)
                 else:
-                  bot.sendMessage(chat_id=user,
-                          text=open(news, 'r').read())
-                  logging.warning('user %s is notified' % user)
+                  pass                                                           # don`t touch empty lines
       sleep(TIMEOUT)
+      return 0
 
   def getLastNews(): 
     global news
@@ -58,15 +62,14 @@ def main():
             if new_message != file.readline():                                            
                 with open(news, 'w') as file:
                     file.write(new_message)
-                    logging.warning('new message! news updated')
+                    logging.warning('new message, so news updated')
                     return 0
             else:                                                               # file and variable are the same, so no news
                 return 1
-
-    except Exception:
-        logging.error('some problems with getLastNews()')
+    except Exception as error:
+        logging.error('some problems with getLastNews(): %s' % error)
         return 1
-
+  
   for file in news, user_db:
       if not os.path.exists(file):
           open(file, 'w').close()
@@ -153,28 +156,28 @@ def echo(bot, update_id):                                                       
 
         if message == "/start":                                                 # Reply to the start message
             if addSubscriber(chat_id) == 0:
-              bot.sendMessage(chat_id=chat_id,
-                            text="Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, 
-                                    а вот пока из последнего: %s" % open(news, 'r').readline())
+              msg = "Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, 
+                                    а вот пока из последнего: %s" % open(news, 'r').readline()
+              sendMessage(chat_id, msg)
             elif addSubscriber(chat_id) == 4:
-              bot.sendMessage(chat_id=chat_id,
-                            text="Вы ведь уже подписаны на обновления vandrouki!")
+              msg = "Вы ведь уже подписаны на обновления vandrouki!"
+              sendMessage(chat_id, msg)
             else:
-              bot.sendMessage(chat_id=chat_id,
-                            text="У нас что-то пошло не так...")
+              msg = "У нас что-то пошло не так..."
+              sendMessage(chat_id, msg)
         elif message == "/stop":                                                # Reply to the message
             if delSubscriber(chat_id) == 0:
-              bot.sendMessage(chat_id=chat_id,
-                              text="Вы отписались от обновления vandrouki. Пока!")
+              msg = "Вы отписались от обновления vandrouki. Пока!"
+              sendMessage(chat_id, msg)
             elif delSubscriber(chat_id) == 3:
-              bot.sendMessage(chat_id=chat_id,
-                              text="Привет! А Вы не подписаны на обновления vandrouki.")
+              msg = "Привет! А Вы не подписаны на обновления vandrouki."
+              sendMessage(chat_id, msg)
             else:
-              bot.sendMessage(chat_id=chat_id,
-                              text="У нас что-то пошло не так...")
+              msg = "У нас что-то пошло не так..."
+              sendMessage(chat_id, msg)
         elif message:
-          bot.sendMessage(chat_id=chat_id,
-                              text="Что-что? Я понимаю только /start и /stop")
+          msg = "Что-что? Я понимаю только /start и /stop"
+          sendMessage(chat_id, msg)
     return update_id
 
 if __name__ == '__main__':
