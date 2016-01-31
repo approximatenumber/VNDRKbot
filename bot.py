@@ -19,13 +19,16 @@ try:
     from urllib.error import URLError
 except ImportError:
     from urllib2 import URLError                                # python 2
-
+try:
+    sys.path.append('.private'); from config import TOKEN       # importing secret TOKEN
+except ImportError:
+    print("need TOKEN from .private/config.py")
+    sys.exit(1)
 user_db = "user_db"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
 log_file = "bot.log"
-sys.path.append('.private'); from config import TOKEN
 
 def main():
   logging.basicConfig(
@@ -33,55 +36,78 @@ def main():
       filename=log_file,
       format='%(asctime)s:%(levelname)s - %(message)s')
   
-  for file in news, user_db:
-      if not os.path.exists(file):
-          open(file, 'w').close()
-          logging.warning('file %s created' % file)
-  open(log_file, 'w').close()
-          
-  bot = telegram.Bot(TOKEN)
-  logging.warning('bot started...')
-  try:
-      update_id = bot.getUpdates()[0].update_id
-  except IndexError:
-      update_id = None
-
+  def sendMessage(chat_id, msg):
+    bot.sendMessage(chat_id=chat_id, text=msg)
+    return chat_id
+  
   def notificateUser():
     while True:
       if getLastNews() == 0:
           with open(user_db,'r') as file:
-              for user in file.read().splitlines():
-                if user.strip() == '':                                                       # don`t touch empty lines
-                  pass
+              for chat_id in file.read().splitlines():
+                if chat_id.strip() != '':
+                  msg = open(news, 'r').read()
+                  sendMessage(chat_id, msg)
+                  logging.warning('user with chat_id %s is notified' % chat_id)
                 else:
-                  bot.sendMessage(chat_id=user,
-                          text=open(news, 'r').read())
-                  logging.warning('user %s is notified' % user)
+                  pass                                                           # don`t touch empty lines
       sleep(TIMEOUT)
+    return 0
 
   def getLastNews(): 
     global news
     try:
         soup = BeautifulSoup(urlopen(URL), "html.parser")
+        new_message = soup.findAll('a', { 'rel': 'bookmark' })[0].get("href")               # get last message
         with open(news, 'r') as file:
-          for a in soup.findAll('a', { 'rel': 'bookmark' }):
-#              new_message = "%s (%s)" % (a.get_text(), str(a.get('href')))
-              new_message = str(a.get('href'))
-#              if new_message.encode('utf-8') == file.readline():                           # RASPBIAN PROBLEM
-              if new_message == file.readline():                                            # file and variable are the same, so no news
-                pass
-                return 1
-              else:
+            if new_message.decode("utf-8") != file.readline():
                 with open(news, 'w') as file:
-                  try:
-                      file.write(new_message.encode('utf-8')) # python 3.4.3 raspbian
-                  except TypeError:
-                      file.write(new_message)
-                logging.warning('new message! news updated')
-                return 0
-    except Exception:
-        logging.error('some problems with getLastNews()')
+                    file.write(new_message)
+                    logging.warning('new message, so news updated')
+                    return 0
+            else:                                                               # file and variable are the same, so no news
+                return 1
+    except Exception as error:
+        logging.error('some problems with getLastNews(): %s' % error)
         return 1
+  
+  def echo(bot, update_id):                                                       # Request updates after the last update_id
+      for update in bot.getUpdates(offset=update_id, timeout=10):                 # chat_id is required to reply to any message
+          chat_id = update.message.chat_id
+          update_id = update.update_id + 1
+          message = update.message.text
+
+          if message == "/start":                                                 # Reply to the start message
+              if addSubscriber(chat_id) == 0:
+                msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!"
+                sendMessage(chat_id, msg)
+              elif addSubscriber(chat_id) == 4:
+                msg = "Вы ведь уже подписаны на обновления vandrouki!"
+                sendMessage(chat_id, msg)
+              else:
+                msg = "У нас что-то пошло не так..."
+                sendMessage(chat_id, msg)
+          elif message == "/stop":                                                # Reply to the message
+              if delSubscriber(chat_id) == 0:
+                msg = "Вы отписались от обновления vandrouki. Пока!"
+                sendMessage(chat_id, msg)
+              elif delSubscriber(chat_id) == 3:
+                msg = "Привет! А Вы не подписаны на обновления vandrouki."
+                sendMessage(chat_id, msg)
+              else:
+                msg = "У нас что-то пошло не так..."
+                sendMessage(chat_id, msg)
+          elif message:
+            msg = "Что-что? Я понимаю только /start и /stop"
+            sendMessage(chat_id, msg)
+      return update_id  
+  
+  for file in news, user_db:
+      if not os.path.exists(file):
+          open(file, 'w').close()
+          logging.warning('file %s created' % file)
+  open(log_file, 'w').close()
+  logging.warning('bot started...')
 
   bot = telegram.Bot(TOKEN)
   try:
@@ -146,44 +172,14 @@ def delSubscriber(chat_id):
         pass
         return 3
     else:                                                                       # db does not exist
-      new_user_db = open(user_db,"w")
-      new_user_db.close()
+      open(user_db, 'w').close()
       logging.warning('no such user: %s' % chat_id)
       return 3
   except Exception:
     logging.error('delSubscriber(): some problems with %s' % chat_id)
     return 1
   
-def echo(bot, update_id):                                                       # Request updates after the last update_id
-    for update in bot.getUpdates(offset=update_id, timeout=10):                 # chat_id is required to reply to any message
-        chat_id = update.message.chat_id
-        update_id = update.update_id + 1
-        message = update.message.text
 
-        if message == "/start":                                                 # Reply to the start message
-            if addSubscriber(chat_id) == 0:
-              bot.sendMessage(chat_id=chat_id,
-                            text="Привет! Вы подписаны на обновления vandrouki. Ожидайте новостей, а вот из последнего: %s" % open(news, 'r').readline())
-            elif addSubscriber(chat_id) == 4:
-              bot.sendMessage(chat_id=chat_id,
-                            text="Вы ведь уже подписаны на обновления vandrouki!")
-            else:
-              bot.sendMessage(chat_id=chat_id,
-                            text="У нас что-то пошло не так...")
-        elif message == "/stop":                                                # Reply to the message
-            if delSubscriber(chat_id) == 0:
-              bot.sendMessage(chat_id=chat_id,
-                              text="Вы отписались от обновления vandrouki. Пока!")
-            elif delSubscriber(chat_id) == 3:
-              bot.sendMessage(chat_id=chat_id,
-                              text="Привет! А Вы не подписаны на обновления vandrouki.")
-            else:
-              bot.sendMessage(chat_id=chat_id,
-                              text="У нас что-то пошло не так...")
-        elif message:
-          bot.sendMessage(chat_id=chat_id,
-                              text="Что-что? Я понимаю только /start и /stop")
-    return update_id
 
 if __name__ == '__main__':
     main()
