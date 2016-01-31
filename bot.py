@@ -28,11 +28,12 @@ user_db = "user_db"
 news = "last_news"
 TIMEOUT = 30
 URL = "http://vandrouki.ru"
+log_file = "bot.log"
 
 def main():
   logging.basicConfig(
       level = logging.WARNING,
-      filename="bot.log",
+      filename=log_file,
       format='%(asctime)s:%(levelname)s - %(message)s')
   
   def sendMessage(chat_id, msg):
@@ -43,8 +44,8 @@ def main():
     while True:
       if getLastNews() == 0:
           with open(user_db,'r') as file:
-              for chad_id in file.read().splitlines():
-                if chat_id.strip() != '':                   
+              for chat_id in file.read().splitlines():
+                if chat_id.strip() != '':
                   msg = open(news, 'r').read()
                   sendMessage(chat_id, msg)
                   logging.warning('user wit chat_id %s is notified' % chat_id)
@@ -57,9 +58,9 @@ def main():
     global news
     try:
         soup = BeautifulSoup(urlopen(URL), "html.parser")
-        new_message = soup.findAll('a', { 'rel': 'bookmark' })[0]               # get last message, parsing with parameters
+        new_message = soup.findAll('a', { 'rel': 'bookmark' })[0].get("href")               # get last message
         with open(news, 'r') as file:
-            if new_message != file.readline():                                            
+            if new_message.decode("utf-8") != file.readline():
                 with open(news, 'w') as file:
                     file.write(new_message)
                     logging.warning('new message, so news updated')
@@ -155,7 +156,7 @@ def echo(bot, update_id):                                                       
 
         if message == "/start":                                                 # Reply to the start message
             if addSubscriber(chat_id) == 0:
-              msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!")
+              msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!"
               sendMessage(chat_id, msg)
             elif addSubscriber(chat_id) == 4:
               msg = "Вы ведь уже подписаны на обновления vandrouki!"
