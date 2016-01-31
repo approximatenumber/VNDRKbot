@@ -48,7 +48,7 @@ def main():
                 if chat_id.strip() != '':
                   msg = open(news, 'r').read()
                   sendMessage(chat_id, msg)
-                  logging.warning('user wit chat_id %s is notified' % chat_id)
+                  logging.warning('user with chat_id %s is notified' % chat_id)
                 else:
                   pass                                                           # don`t touch empty lines
       sleep(TIMEOUT)
@@ -70,6 +70,37 @@ def main():
     except Exception as error:
         logging.error('some problems with getLastNews(): %s' % error)
         return 1
+  
+  def echo(bot, update_id):                                                       # Request updates after the last update_id
+      for update in bot.getUpdates(offset=update_id, timeout=10):                 # chat_id is required to reply to any message
+          chat_id = update.message.chat_id
+          update_id = update.update_id + 1
+          message = update.message.text
+
+          if message == "/start":                                                 # Reply to the start message
+              if addSubscriber(chat_id) == 0:
+                msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!"
+                sendMessage(chat_id, msg)
+              elif addSubscriber(chat_id) == 4:
+                msg = "Вы ведь уже подписаны на обновления vandrouki!"
+                sendMessage(chat_id, msg)
+              else:
+                msg = "У нас что-то пошло не так..."
+                sendMessage(chat_id, msg)
+          elif message == "/stop":                                                # Reply to the message
+              if delSubscriber(chat_id) == 0:
+                msg = "Вы отписались от обновления vandrouki. Пока!"
+                sendMessage(chat_id, msg)
+              elif delSubscriber(chat_id) == 3:
+                msg = "Привет! А Вы не подписаны на обновления vandrouki."
+                sendMessage(chat_id, msg)
+              else:
+                msg = "У нас что-то пошло не так..."
+                sendMessage(chat_id, msg)
+          elif message:
+            msg = "Что-что? Я понимаю только /start и /stop"
+            sendMessage(chat_id, msg)
+      return update_id  
   
   for file in news, user_db:
       if not os.path.exists(file):
@@ -148,36 +179,7 @@ def delSubscriber(chat_id):
     logging.error('delSubscriber(): some problems with %s' % chat_id)
     return 1
   
-def echo(bot, update_id):                                                       # Request updates after the last update_id
-    for update in bot.getUpdates(offset=update_id, timeout=10):                 # chat_id is required to reply to any message
-        chat_id = update.message.chat_id
-        update_id = update.update_id + 1
-        message = update.message.text
 
-        if message == "/start":                                                 # Reply to the start message
-            if addSubscriber(chat_id) == 0:
-              msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!"
-              sendMessage(chat_id, msg)
-            elif addSubscriber(chat_id) == 4:
-              msg = "Вы ведь уже подписаны на обновления vandrouki!"
-              sendMessage(chat_id, msg)
-            else:
-              msg = "У нас что-то пошло не так..."
-              sendMessage(chat_id, msg)
-        elif message == "/stop":                                                # Reply to the message
-            if delSubscriber(chat_id) == 0:
-              msg = "Вы отписались от обновления vandrouki. Пока!"
-              sendMessage(chat_id, msg)
-            elif delSubscriber(chat_id) == 3:
-              msg = "Привет! А Вы не подписаны на обновления vandrouki."
-              sendMessage(chat_id, msg)
-            else:
-              msg = "У нас что-то пошло не так..."
-              sendMessage(chat_id, msg)
-        elif message:
-          msg = "Что-что? Я понимаю только /start и /stop"
-          sendMessage(chat_id, msg)
-    return update_id
 
 if __name__ == '__main__':
     main()
