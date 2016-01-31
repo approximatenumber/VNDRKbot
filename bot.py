@@ -52,7 +52,7 @@ def main():
                 else:
                   pass                                                           # don`t touch empty lines
       sleep(TIMEOUT)
-      return 0
+    return 0
 
   def getLastNews(): 
     global news
