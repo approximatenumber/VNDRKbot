@@ -1,11 +1,10 @@
 # VNDRKbot Telegram Bot On Python
 
-Бот для оповещения своих подписчиков о новых событиях на сайте vandrouki.ru.
-
-За основу мною был взят пример [echobot.py](https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/legacy/echobot.py).
+Бот для оповещения своих подписчиков о новых событиях на сайте vandrouki.ru. За основу мною был взят пример [echobot.py](https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/legacy/echobot.py).
 
 ## Запуск
 `pip install -r requirements.txt`
+
 `./bot.py`
 
 ## Что нужно исправить/добавить?
