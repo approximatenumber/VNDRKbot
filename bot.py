@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Exit codes of functions addSubscriber() and delSubscriber():
+# Exit codes of functions addUser() and delUser():
 # 0 - well done
 # 1 - something goes wrong
 # 3 - no such user
@@ -78,20 +78,20 @@ def main():
           message = update.message.text
 
           if message == "/start":                                                 # Reply to the start message
-              if addSubscriber(chat_id) == 0:
+              if addUser(chat_id) == 0:
                 msg = "Привет! Вы подписаны на обновления vandrouki, ожидайте новостей!"
                 sendMessage(chat_id, msg)
-              elif addSubscriber(chat_id) == 4:
+              elif addUser(chat_id) == 4:
                 msg = "Вы ведь уже подписаны на обновления vandrouki!"
                 sendMessage(chat_id, msg)
               else:
                 msg = "У нас что-то пошло не так..."
                 sendMessage(chat_id, msg)
           elif message == "/stop":                                                # Reply to the message
-              if delSubscriber(chat_id) == 0:
+              if delUser(chat_id) == 0:
                 msg = "Вы отписались от обновления vandrouki. Пока!"
                 sendMessage(chat_id, msg)
-              elif delSubscriber(chat_id) == 3:
+              elif delUser(chat_id) == 3:
                 msg = "Привет! А Вы не подписаны на обновления vandrouki."
                 sendMessage(chat_id, msg)
               else:
@@ -135,7 +135,7 @@ def main():
           # These are network problems on our end.
           sleep(1)
 
-def addSubscriber(chat_id):
+def addUser(chat_id):
   try:
     if os.path.exists(user_db):
       with open(user_db,'r') as file:
@@ -154,10 +154,10 @@ def addSubscriber(chat_id):
       logging.warning('DB created! added %s' % chat_id)
       return 0
   except Exception:
-    logging.error('addSubscriber(): some problems with %s while' % chat_id)
+    logging.error('addUser(): some problems with %s while' % chat_id)
     return 1
   
-def delSubscriber(chat_id):
+def delUser(chat_id):
   try:
     if os.path.exists(user_db):
       users = open(user_db).read()
@@ -176,7 +176,7 @@ def delSubscriber(chat_id):
       logging.warning('no such user: %s' % chat_id)
       return 3
   except Exception:
-    logging.error('delSubscriber(): some problems with %s' % chat_id)
+    logging.error('delUser(): some problems with %s' % chat_id)
     return 1
   
 
