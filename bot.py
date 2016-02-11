@@ -36,10 +36,12 @@ def main():
       filename=log_file,
       format='%(asctime)s:%(levelname)s - %(message)s')
   
-    def sendMessage(chat_id, msg):
-        bot.sendMessage(chat_id=chat_id, text=msg)
-        return chat_id
-  
+#    def sendMessage(chat_id, msg):
+#        bot.sendMessage(chat_id=chat_id, text=msg)
+#        return chat_id
+
+    sendMessage = lambda chat_id, msg: bot.sendMessage(chat_id, msg)
+
     def notificateUser():
         while True:
             if getLastNews() == 0:
@@ -66,7 +68,7 @@ def main():
                 with open(news, 'w') as file:
                     new_message = new_message_text + '\n' + new_message_href
                     file.write(new_message)
-                    logging.warning('new message, so news updated')
+                    logging.warning('got new message, news updated')
                     return 0
             else:                                                               # file and variable are the same, so no news
                 return 1
