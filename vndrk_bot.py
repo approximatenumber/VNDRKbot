@@ -60,8 +60,8 @@ def main():
         try:
             soup = BeautifulSoup(urlopen(URL), "html.parser")
             # get last message with bs
-            new_message_text = soup.findAll('a', { 'rel': 'bookmark' })[0].getText().encode("utf-8")
-            new_message_href = soup.findAll('a', { 'rel': 'bookmark' })[0].get("href").encode("utf-8")
+            new_message_text = soup.findAll('a', { 'rel': 'bookmark' })[0].getText()
+            new_message_href = soup.findAll('a', { 'rel': 'bookmark' })[0].get("href")
             old_message = open(news, 'r').readlines()
             if new_message_href not in old_message:
                 # got new message, so update the file
@@ -183,6 +183,8 @@ def main():
         except URLError as e:
             # These are network problems on our end.
             sleep(1)
-
+        except urllib.error.URLError as e:
+            logging.error("error! %s" % e)
+            sleep(30)
 if __name__ == '__main__':
     main()
