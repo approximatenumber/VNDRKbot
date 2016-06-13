@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler
+from time import sleep
 from telegram import Bot, TelegramError
 import logging
 import sys
-import os
-from tinydb import TinyDB, Query
 import pickledb as pkl
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
@@ -18,9 +17,10 @@ except ImportError:
     raise SystemExit
 
 log_file = "bot.log"
-chats = 'chats.json'
 news_file = 'news.db'
+chat_file = 'chats.db'
 URL = "http://vandrouki.ru"
+TIMEOUT = 180
 
 logging.basicConfig(level=logging.WARNING, filename=log_file, format='%(asctime)s:%(levelname)s - %(message)s')
 logging.FileHandler(log_file, mode='w')
@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 class News():
-
     def __init__(self, news_file):
         self.news_db = pkl.load(news_file, False)
         if not self.news_db.get('link'):
@@ -57,41 +56,75 @@ class News():
             return False
 
 
+class Chats():
+    def __init__(self, chat_file):
+        self.chat_db = pkl.load(chat_file, False)
+        try:
+            num = self.chat_db.llen('chats')
+            logging.warning('chats in DB: %s' % num)
+        except KeyError:
+            self.chat_db.lcreate('chats')
+            logging.warning('chat DB created')
+
+    def add(self, chat_id):
+        self.chat_db.ladd('chats', chat_id)
+        self.chat_db.dump()
+
+    def remove(self, chat_id):
+        for num in range(self.chat_db.llen('chats')):
+            if chat_id == self.chat_db.lget('chats', num):
+                self.chat_db.lpop('chats', num)
+                self.chat_db.dump()
+
+    def contains(self, chat_id):
+        for num in range(self.chat_db.llen('chats')):
+            if chat_id == self.chat_db.lget('chats', num):
+                return True
+            return False
+
+    def getall(self):
+        return self.chat_db.lgetall('chats')
+
+
 def main(**args):
 
     def start(bot, update):
         message = update.message
         chat_id = message.chat.id
-        if not chat_db.contains(chats_query.chat_id == chat_id):
-            chat_db.insert({'chat_id': chat_id})
+        if not chats.contains(chat_id):
+            chats.add(chat_id)
             text = 'Вы подписаны на рассылку vandrouki.ru!'
             bot.sendMessage(chat_id=chat_id, text=text)
             logging.warning('%s added' % chat_id)
+        else:
+            text = 'Вы уже подписаны!'
+            bot.sendMessage(chat_id=chat_id, text=text)
 
     def stop(bot, update):
         message = update.message
         chat_id = message.chat.id
-        if chat_db.contains(chats_query.chat_id == chat_id) is True:
-            chat_db.remove(chats_query.chat_id == chat_id)
+        if chats.contains(chat_id):
+            chats.remove(chat_id)
             text = 'Вы отписались от рассылки vandrouki.ru!'
             bot.sendMessage(chat_id=chat_id, text=text)
             logging.warning('%s removed' % chat_id)
+        else:
+            text = 'Вы уже отписались!'
+            bot.sendMessage(chat_id=chat_id, text=text)
 
     def send_msg(chat_id, text):
         try:
             Bot(token=TOKEN).sendMessage(chat_id, text)
         except TelegramError as err:
             if err.message == "Unauthorized":
-                chat_db.remove(chats_query.chat_id == chat_id)
+                chats.remove(chat_id)
                 logging.warning('%s blocked us, so removed' % chat_id)
             else:
-                logging.error('Error for %s: %s' % (chat_id, err))
+                logging.error('Telegram error: chat_id %s, %s' % (chat_id, err))
 
+    news = News(news_file)
+    chats = Chats(chat_file)
 
-    chat_db = TinyDB(chats)
-    chats_query = Query()
-
-    
     updater = Updater(TOKEN)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
@@ -99,16 +132,20 @@ def main(**args):
     # dp.add_error_handler(error)
     updater.start_polling()
 
-    news = News(news_file)
-    stored_news_link = news.read('link')
-    downloaded_news_link, downloaded_news_text = news.download()
-    print('stored: %s, down: %s' % (stored_news_link, downloaded_news_link))
-    if news.check_update(downloaded_news_link, stored_news_link) is True:
-        news.store('link', downloaded_news_link)
-        news.store('text', downloaded_news_text)
-    else:
-        print('the same')
-
+    while True:
+        try:
+            stored_news_link = news.read('link')
+            downloaded_news_link, downloaded_news_text = news.download()
+            print('stored: %s, down: %s' % (stored_news_link, downloaded_news_link))
+            if news.check_update(downloaded_news_link, stored_news_link) is True:
+                news.store('link', downloaded_news_link)
+                news.store('text', downloaded_news_text)
+                for chat_id in chats.getall():
+                    message = news.read('text') + '\n' + news.read('link')
+                    send_msg(chat_id, message)
+        except Exception as err:
+            logging.error('Error while processing: %s' % err)
+        sleep(TIMEOUT)
 
 if __name__ == '__main__':
     main()
