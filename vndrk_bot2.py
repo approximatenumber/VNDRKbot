@@ -49,8 +49,8 @@ class News():
         text = soup.findAll('a', {'rel': 'bookmark'})[0].getText()
         return link, text
 
-    def check_update(self, downloaded_news, stored_news):
-        if downloaded_news != stored_news:
+    def check_update(self, old, new):
+        if old != new:
             return True
         else:
             return False
@@ -122,6 +122,10 @@ def main(**args):
             else:
                 logging.error('Telegram error: chat_id %s, %s' % (chat_id, err))
 
+    def error(bot, update, error):
+        logging.warning('Update "%s" caused error "%s"' % (update, error))
+        sleep(10)
+
     news = News(news_file)
     chats = Chats(chat_file)
 
@@ -129,17 +133,16 @@ def main(**args):
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("stop", stop))
-    # dp.add_error_handler(error)
+    dp.add_error_handler(error)
     updater.start_polling()
 
     while True:
         try:
-            stored_news_link = news.read('link')
-            downloaded_news_link, downloaded_news_text = news.download()
-            print('stored: %s, down: %s' % (stored_news_link, downloaded_news_link))
-            if news.check_update(downloaded_news_link, stored_news_link) is True:
-                news.store('link', downloaded_news_link)
-                news.store('text', downloaded_news_text)
+            stored_link = news.read('link')
+            downloaded_link, downloaded_text = news.download()
+            if news.check_update(stored_link, downloaded_link) is True:
+                news.store('link', downloaded_link)
+                news.store('text', downloaded_text)
                 for chat_id in chats.getall():
                     message = news.read('text') + '\n' + news.read('link')
                     send_msg(chat_id, message)
