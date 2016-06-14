@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
+from telegram import Bot, TelegramError
 from telegram.ext import Updater, CommandHandler
 from time import sleep
-from telegram import Bot, TelegramError
 import logging
 import sys
 import pickledb as pkl
