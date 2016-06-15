@@ -1,4 +1,4 @@
-# VNDRKbot Telegram Bot On Python
+# vandrouki.ru Telegram Bot
 
 Бот для оповещения своих подписчиков о новых событиях на русскоязычном сайте vandrouki.ru. 
 
