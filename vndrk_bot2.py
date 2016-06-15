@@ -77,9 +77,13 @@ class Chats():
                 self.chat_db.dump()
 
     def contains(self, chat_id):
+        contain = 0
         for num in range(self.chat_db.llen('chats')):
             if chat_id == self.chat_db.lget('chats', num):
-                return True
+                contain += 1
+        if contain > 0:
+            return True
+        else:
             return False
 
     def getall(self):
@@ -91,7 +95,7 @@ def main(**args):
     def start(bot, update):
         message = update.message
         chat_id = message.chat.id
-        if not chats.contains(chat_id):
+        if chats.contains(chat_id) is False:
             chats.add(chat_id)
             text = 'Вы подписаны на рассылку vandrouki.ru!'
             bot.sendMessage(chat_id=chat_id, text=text)
@@ -103,7 +107,7 @@ def main(**args):
     def stop(bot, update):
         message = update.message
         chat_id = message.chat.id
-        if chats.contains(chat_id):
+        if chats.contains(chat_id) is True:
             chats.remove(chat_id)
             text = 'Вы отписались от рассылки vandrouki.ru!'
             bot.sendMessage(chat_id=chat_id, text=text)
